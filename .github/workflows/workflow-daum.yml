@@ -1,0 +1,26 @@
+
+name: Send Daum Report
+
+on:
+  schedule:
+    - cron: '0 23 * * 1-5'  # 오전 8시 KST 기준
+  workflow_dispatch:
+
+jobs:
+  send-daum-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 python-telegram-bot
+
+      - name: Run Daum Report Script
+        run: python send_daum_report.py
