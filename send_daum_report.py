@@ -3,8 +3,8 @@ import requests
 import telegram
 from datetime import datetime
 
-TOKEN = "6436282670:AAEge9QjzUYycDGe4LQqxvuGcInBHyWn-Eo"
-CHAT_ID = "-1002128602192"
+TOKEN = "8146688249:AAFcIyUeYXXSO2h2zCHerPHedgyN42yxMrY"
+CHAT_ID = "-1002563974261"
 
 def format_change_rate(rate_str):
     if "-" in rate_str:
@@ -15,7 +15,12 @@ def format_change_rate(rate_str):
 def format_amount_million_to_eok(value):
     try:
         value = int(value.replace(",", ""))
-        return f"{value // 100}억"
+        if value >= 10**12:
+            return f"{round(value / 10**12, 1)}조"
+        elif value >= 10**8:
+            return f"{value // 100}억"
+        else:
+            return f"{value}"
     except:
         return value
 
@@ -75,7 +80,7 @@ def main():
     buy_list, sell_list = get_foreign_trades()
     holdings = get_foreign_holdings()
 
-    message = f"⏰ <b>{now} Daum 외국인 매매 리포트 (즉시 실행)</b>\n\n"
+    message = f"⏰ <b>{now} Daum 외국인 매매 리포트</b>\n\n"
     message += "1️⃣ [외국인 순매수 TOP10]\n" + "\n".join(buy_list) + "\n\n"
     message += "2️⃣ [외국인 순매도 TOP10]\n" + "\n".join(sell_list) + "\n\n"
     message += "3️⃣ [외국인 보유율 TOP15 – 코스피]\n" + "\n".join(holdings['KOSPI']) + "\n\n"
