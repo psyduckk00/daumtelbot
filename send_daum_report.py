@@ -26,7 +26,7 @@ def format_amount_million_to_eok(value):
 # 메시지 전송 함수
 def send_message(message):
     bot = telegram.Bot(token=TOKEN)
-    bot.send_message(chat_id=CHAT_ID, text=message, parse_mode=telegram.ParseMode.HTML)
+    bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="HTML")
 
 # 1. 외국인 순매수/순매도 종목 수집 (Top10)
 def get_foreign_trades():
