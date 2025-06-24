@@ -36,22 +36,37 @@ def get_foreign_trades():
     url_buy = "https://finance.daum.net/api/ranking/buy"
     url_sell = "https://finance.daum.net/api/ranking/sell"
 
-    buy_data = requests.get(url_buy, headers=headers).json().get("data", [])[:10]
-    sell_data = requests.get(url_sell, headers=headers).json().get("data", [])[:10]
+    buy_resp = requests.get(url_buy, headers=headers)
+    sell_resp = requests.get(url_sell, headers=headers)
+
+    try:
+        buy_data = buy_resp.json().get("data", [])[:10]
+    except:
+        buy_data = []
+    try:
+        sell_data = sell_resp.json().get("data", [])[:10]
+    except:
+        sell_data = []
 
     buy_list = []
-    for i, item in enumerate(buy_data, 1):
-        name = item.get("name", "")
-        amount = format_amount_million_to_eok(str(item.get("amount", "0")))
-        change = format_change_rate(str(item.get("rate", "0.00")))
-        buy_list.append(f"{i}. {name} – {amount}, {change}")
+    if not buy_data:
+        buy_list.append("❌ 순매수 데이터를 불러오지 못했습니다.")
+    else:
+        for i, item in enumerate(buy_data, 1):
+            name = item.get("name", "")
+            amount = format_amount_million_to_eok(str(item.get("amount", "0")))
+            change = format_change_rate(str(item.get("rate", "0.00")))
+            buy_list.append(f"{i}. {name} – {amount}, {change}")
 
     sell_list = []
-    for i, item in enumerate(sell_data, 1):
-        name = item.get("name", "")
-        amount = format_amount_million_to_eok(str(item.get("amount", "0")))
-        change = format_change_rate(str(item.get("rate", "0.00")))
-        sell_list.append(f"{i}. {name} – {amount}, {change}")
+    if not sell_data:
+        sell_list.append("❌ 순매도 데이터를 불러오지 못했습니다.")
+    else:
+        for i, item in enumerate(sell_data, 1):
+            name = item.get("name", "")
+            amount = format_amount_million_to_eok(str(item.get("amount", "0")))
+            change = format_change_rate(str(item.get("rate", "0.00")))
+            sell_list.append(f"{i}. {name} – {amount}, {change}")
 
     return buy_list, sell_list
 
@@ -63,16 +78,23 @@ def get_foreign_holdings():
     result = {"KOSPI": [], "KOSDAQ": []}
     for market in ["STK", "KSQ"]:
         url = f"https://finance.daum.net/api/investor/holding-stocks?per=15&market={market}&page=1"
-        data = requests.get(url, headers=headers).json().get("data", [])
-        for i, item in enumerate(data, 1):
-            name = item.get("name", "")
-            rate = format_change_rate(str(item.get("chgRate", "0.00")))
-            volume = f"{item.get('tradeVolume', 0):,}"
-            buy_vol = f"{item.get('buyVolume', 0):,}"
-            hold = f"{item.get('foreignRate', 0):.2f}%"
-            result["KOSPI" if market == "STK" else "KOSDAQ"].append(
-                f"{i}. {name} – 등락률: {rate}, 거래량: {volume}, 순매수: {buy_vol}, 보유율: {hold}"
-            )
+        try:
+            data = requests.get(url, headers=headers).json().get("data", [])
+        except:
+            data = []
+
+        if not data:
+            result["KOSPI" if market == "STK" else "KOSDAQ"].append("❌ 외국인 보유율 데이터를 불러오지 못했습니다.")
+        else:
+            for i, item in enumerate(data, 1):
+                name = item.get("name", "")
+                rate = format_change_rate(str(item.get("chgRate", "0.00")))
+                volume = f"{item.get('tradeVolume', 0):,}"
+                buy_vol = f"{item.get('buyVolume', 0):,}"
+                hold = f"{item.get('foreignRate', 0):.2f}%"
+                result["KOSPI" if market == "STK" else "KOSDAQ"].append(
+                    f"{i}. {name} – 등락률: {rate}, 거래량: {volume}, 순매수: {buy_vol}, 보유율: {hold}"
+                )
     return result
 
 def main():
