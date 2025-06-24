@@ -3,7 +3,7 @@ name: Send Daum Report
 
 on:
   schedule:
-    - cron: '0 23 * * 1-5'  # 오전 8시 KST 기준
+    - cron: '0 23 * * 1-5'  # 오전 8시 KST
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 python-telegram-bot
+          pip install python-telegram-bot==13.15 requests beautifulsoup4
 
       - name: Run Daum Report Script
         run: python send_daum_report.py

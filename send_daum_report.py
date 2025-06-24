@@ -1,21 +1,17 @@
 
 import requests
-from bs4 import BeautifulSoup
 import telegram
 from datetime import datetime
 
-# 텔레그램 봇 토큰 및 채널 ID
 TOKEN = "6436282670:AAEge9QjzUYycDGe4LQqxvuGcInBHyWn-Eo"
 CHAT_ID = "-1002128602192"
 
-# 상승/하락 색상 텍스트 변환
 def format_change_rate(rate_str):
     if "-" in rate_str:
         return f'<font color="blue">{rate_str}</font>'
     else:
         return f'<font color="red">+{rate_str}</font>'
 
-# 금액 변환: 백만 → 억 단위
 def format_amount_million_to_eok(value):
     try:
         value = int(value.replace(",", ""))
@@ -23,18 +19,15 @@ def format_amount_million_to_eok(value):
     except:
         return value
 
-# 메시지 전송 함수
 def send_message(message):
     bot = telegram.Bot(token=TOKEN)
     bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="HTML")
 
-# 1. 외국인 순매수/순매도 종목 수집 (Top10)
 def get_foreign_trades():
     headers = {
         "referer": "https://finance.daum.net/domestic/influential_investors",
         "User-Agent": "Mozilla/5.0"
     }
-
     url_buy = "https://finance.daum.net/api/ranking/buy"
     url_sell = "https://finance.daum.net/api/ranking/sell"
 
@@ -57,13 +50,11 @@ def get_foreign_trades():
 
     return buy_list, sell_list
 
-# 2. 외국인 보유율 상위 (코스피/코스닥)
 def get_foreign_holdings():
     headers = {
         "referer": "https://finance.daum.net/domestic/investor_holdings",
         "User-Agent": "Mozilla/5.0"
     }
-
     result = {"KOSPI": [], "KOSDAQ": []}
     for market in ["STK", "KSQ"]:
         url = f"https://finance.daum.net/api/investor/holding-stocks?per=15&market={market}&page=1"
@@ -79,13 +70,12 @@ def get_foreign_holdings():
             )
     return result
 
-# 전체 실행
 def main():
-    now = datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
     buy_list, sell_list = get_foreign_trades()
     holdings = get_foreign_holdings()
 
-    message = f"⏰ <b>{now} 오전 8시 Daum 외국인 매매 리포트</b>\n\n"
+    message = f"⏰ <b>{now} Daum 외국인 매매 리포트 (즉시 실행)</b>\n\n"
     message += "1️⃣ [외국인 순매수 TOP10]\n" + "\n".join(buy_list) + "\n\n"
     message += "2️⃣ [외국인 순매도 TOP10]\n" + "\n".join(sell_list) + "\n\n"
     message += "3️⃣ [외국인 보유율 TOP15 – 코스피]\n" + "\n".join(holdings['KOSPI']) + "\n\n"
