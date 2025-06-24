@@ -1,114 +1,84 @@
 
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from bs4 import BeautifulSoup
+import time
 import telegram
-from datetime import datetime
 
-TOKEN = "8146688249:AAFcIyUeYXXSO2h2zCHerPHedgyN42yxMrY"
+BOT_TOKEN = "8146688249:AAFcIyUeYXXSO2h2zCHerPHedgyN42yxMrY"
 CHAT_ID = "-1002563974261"
 
-def format_change_rate(rate_str):
-    if "-" in rate_str:
-        return f'<font color="blue">{rate_str}</font>'
-    else:
-        return f'<font color="red">+{rate_str}</font>'
-
-def format_amount_million_to_eok(value):
-    try:
-        value = int(value.replace(",", ""))
-        if value >= 10**12:
-            return f"{round(value / 10**12, 1)}조"
-        elif value >= 10**8:
-            return f"{value // 100}억"
-        else:
-            return f"{value}"
-    except:
-        return value
-
 def send_message(message):
-    bot = telegram.Bot(token=TOKEN)
+    bot = telegram.Bot(token=BOT_TOKEN)
     bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="HTML")
 
-def get_foreign_trades():
-    headers = {
-        "referer": "https://finance.daum.net/domestic/influential_investors",
-        "User-Agent": "Mozilla/5.0"
-    }
-    url_buy = "https://finance.daum.net/api/ranking/buy"
-    url_sell = "https://finance.daum.net/api/ranking/sell"
-
-    buy_resp = requests.get(url_buy, headers=headers)
-    sell_resp = requests.get(url_sell, headers=headers)
-
-    try:
-        buy_data = buy_resp.json().get("data", [])[:10]
-    except:
-        buy_data = []
-    try:
-        sell_data = sell_resp.json().get("data", [])[:10]
-    except:
-        sell_data = []
-
-    buy_list = []
-    if not buy_data:
-        buy_list.append("❌ 순매수 데이터를 불러오지 못했습니다.")
+def format_percent(value):
+    if value.startswith("-"):
+        return f"🔵 {value}"
     else:
-        for i, item in enumerate(buy_data, 1):
-            name = item.get("name", "")
-            amount = format_amount_million_to_eok(str(item.get("amount", "0")))
-            change = format_change_rate(str(item.get("rate", "0.00")))
-            buy_list.append(f"{i}. {name} – {amount}, {change}")
+        return f"🔴 +{value}"
 
-    sell_list = []
-    if not sell_data:
-        sell_list.append("❌ 순매도 데이터를 불러오지 못했습니다.")
-    else:
-        for i, item in enumerate(sell_data, 1):
-            name = item.get("name", "")
-            amount = format_amount_million_to_eok(str(item.get("amount", "0")))
-            change = format_change_rate(str(item.get("rate", "0.00")))
-            sell_list.append(f"{i}. {name} – {amount}, {change}")
+def crawl_daum():
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(options=options)
 
-    return buy_list, sell_list
+    driver.get("https://finance.daum.net/domestic/influential_investors")
+    time.sleep(5)
 
-def get_foreign_holdings():
-    headers = {
-        "referer": "https://finance.daum.net/domestic/investor_holdings",
-        "User-Agent": "Mozilla/5.0"
-    }
-    result = {"KOSPI": [], "KOSDAQ": []}
-    for market in ["STK", "KSQ"]:
-        url = f"https://finance.daum.net/api/investor/holding-stocks?per=15&market={market}&page=1"
-        try:
-            data = requests.get(url, headers=headers).json().get("data", [])
-        except:
-            data = []
+    soup = BeautifulSoup(driver.page_source, "html.parser")
 
-        if not data:
-            result["KOSPI" if market == "STK" else "KOSDAQ"].append("❌ 외국인 보유율 데이터를 불러오지 못했습니다.")
-        else:
-            for i, item in enumerate(data, 1):
-                name = item.get("name", "")
-                rate = format_change_rate(str(item.get("chgRate", "0.00")))
-                volume = f"{item.get('tradeVolume', 0):,}"
-                buy_vol = f"{item.get('buyVolume', 0):,}"
-                hold = f"{item.get('foreignRate', 0):.2f}%"
-                result["KOSPI" if market == "STK" else "KOSDAQ"].append(
-                    f"{i}. {name} – 등락률: {rate}, 거래량: {volume}, 순매수: {buy_vol}, 보유율: {hold}"
-                )
+    result = "<b>📈 Daum 외국인 매매 리포트</b>\n"
+
+    # 순매수
+    try:
+        result += "\n<b>1️⃣ 외국인 순매수 TOP10</b>\n"
+        table = soup.select("div.card:nth-of-type(1) tbody tr")
+        for i, row in enumerate(table[:10], 1):
+            cols = row.find_all("td")
+            name = cols[1].get_text(strip=True)
+            price = cols[2].get_text(strip=True)
+            change = format_percent(cols[3].get_text(strip=True))
+            result += f"{i}. {name} – {price}, {change}\n"
+    except:
+        result += "❌ 순매수 데이터를 불러오지 못했습니다.\n"
+
+    # 순매도
+    try:
+        result += "\n<b>2️⃣ 외국인 순매도 TOP10</b>\n"
+        table = soup.select("div.card:nth-of-type(2) tbody tr")
+        for i, row in enumerate(table[:10], 1):
+            cols = row.find_all("td")
+            name = cols[1].get_text(strip=True)
+            price = cols[2].get_text(strip=True)
+            change = format_percent(cols[3].get_text(strip=True))
+            result += f"{i}. {name} – {price}, {change}\n"
+    except:
+        result += "❌ 순매도 데이터를 불러오지 못했습니다.\n"
+
+    # 보유율 (코스피)
+    try:
+        result += "\n<b>3️⃣ 외국인 보유율 TOP15 - 코스피</b>\n"
+        driver.get("https://finance.daum.net/domestic/foreign")
+        time.sleep(5)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        table = soup.select("div.box_contents tbody tr")
+        for i, row in enumerate(table[:15], 1):
+            cols = row.find_all("td")
+            name = cols[1].get_text(strip=True)
+            rate = format_percent(cols[2].get_text(strip=True))
+            volume = cols[3].get_text(strip=True)
+            foreign = cols[5].get_text(strip=True)
+            result += f"{i}. {name} – {rate}, {volume}, 외인보유: {foreign}\n"
+    except:
+        result += "❌ 외국인 보유율 데이터를 불러오지 못했습니다.\n"
+
+    driver.quit()
     return result
 
-def main():
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    buy_list, sell_list = get_foreign_trades()
-    holdings = get_foreign_holdings()
-
-    message = f"⏰ <b>{now} Daum 외국인 매매 리포트</b>\n\n"
-    message += "1️⃣ [외국인 순매수 TOP10]\n" + "\n".join(buy_list) + "\n\n"
-    message += "2️⃣ [외국인 순매도 TOP10]\n" + "\n".join(sell_list) + "\n\n"
-    message += "3️⃣ [외국인 보유율 TOP15 – 코스피]\n" + "\n".join(holdings['KOSPI']) + "\n\n"
-    message += "4️⃣ [외국인 보유율 TOP15 – 코스닥]\n" + "\n".join(holdings['KOSDAQ'])
-
-    send_message(message)
-
 if __name__ == "__main__":
-    main()
+    message = crawl_daum()
+    send_message(message)
